@@ -1,6 +1,7 @@
 import { createCipheriv, createDecipheriv, createHash, randomBytes } from 'node:crypto';
 import net from 'node:net';
 import tls from 'node:tls';
+import { supabaseSecretKey } from '@/lib/env';
 
 // Sends email through a normal mailbox (Gmail, Outlook…) over SMTP, with no
 // library: port 465 starts encrypted, port 587 upgrades with STARTTLS. Only
@@ -13,7 +14,7 @@ export const MAIL_PROVIDERS = {
 
 /** The key that encrypts saved mailbox passwords, derived from a server-only secret. */
 function key(): Buffer {
-  const secret = process.env.MAIL_SECRET || process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const secret = process.env.MAIL_SECRET || supabaseSecretKey();
   if (!secret) throw new Error('The server has no secret to protect mail passwords with.');
   return createHash('sha256').update(`unidock-mail:${secret}`).digest();
 }

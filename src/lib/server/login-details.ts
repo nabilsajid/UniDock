@@ -1,7 +1,8 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { open, seal } from './secret-box';
+import { supabaseSecretKey } from '@/lib/env';
 
-const secret = () => process.env.SUPABASE_SERVICE_ROLE_KEY ?? null;
+const secret = () => supabaseSecretKey() || null;
 
 /**
  * Remembers the password an admin just gave someone, so admins can look it up

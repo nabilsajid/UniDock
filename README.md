@@ -15,34 +15,38 @@ Built with Next.js (App Router, TypeScript) and Supabase (Postgres, Auth, row le
 - **Several companies.** One install can host separate companies, each with its own admin and data.
 - **Installable.** Works as an app on Android, iPhone and desktop.
 
-## Quick start (hosted on Vercel)
+## Quick start: one click
 
-1. **Create a Supabase project** at [supabase.com](https://supabase.com) (the free plan is enough to start).
-2. **Fork this repository** on GitHub.
-3. **Set up the database.** In your fork, go to Settings → Secrets and variables → Actions and add:
-   - Secret `SUPABASE_DB_URL`: Supabase → Connect → *Session pooler* connection string, with your database password filled in.
-   - Variable `FRESH_DATABASE` = `true`.
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fnabilsajid%2FUniDock&project-name=unidock&repository-name=unidock&stores=%5B%7B%22type%22%3A%22integration%22%2C%22integrationSlug%22%3A%22supabase%22%2C%22productSlug%22%3A%22supabase%22%2C%22protocol%22%3A%22storage%22%2C%22allowConnectExistingProduct%22%3Atrue%7D%5D)
 
-   Then open Actions → **Database update** → Run workflow, untick *dry run*, and run it. It creates every table. Afterwards, delete the `FRESH_DATABASE` variable. From then on, new updates apply by themselves when they reach `main`.
-4. **Deploy on Vercel.** Import your fork at [vercel.com/new](https://vercel.com/new) and add these environment variables (Supabase → Project Settings → API):
-   - `NEXT_PUBLIC_SUPABASE_URL`
-   - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
-   - `SUPABASE_SERVICE_ROLE_KEY` (keep this one secret)
-   - `CRON_SECRET`: any long random text
-5. **Create your company and admin.** On your computer, copy `.env.example` to `.env.local`, fill in the Supabase values and the `DEMO_*` values (company name, your email and a password), then run `npm install` and `npm run seed:demo`. Sign in to your Vercel address with that email and password.
+1. **Click Deploy with Vercel.** Sign in to Vercel and GitHub. Vercel copies UniDock to your GitHub account.
+2. **Add Supabase when Vercel asks.** Create a new Supabase project (the free plan is enough) or connect an existing one. Vercel fills in every key for you.
+3. **Wait for the deploy.** The database is built during the deploy: every table, rule and update.
+4. **Open your new link.** UniDock asks a few questions:
+   - your company name and logo (PNG)
+   - your email and password, entered twice
+   - your Supabase secret key, to prove the install is yours (Supabase → Project Settings → API Keys; it is checked once and never stored)
+   - which extras you want: KPI system, invoice generation, calendar
 
-Everything else is optional and listed in [`.env.example`](.env.example). After signing in, **Settings → System check** shows whether every database update has been applied.
+   Then it creates your admin workspace and signs you in.
+
+To update later, open your copy on GitHub and click **Sync fork**. Vercel redeploys and applies any new database updates by itself.
+
+Everything else is optional and listed in [`.env.example`](.env.example). After signing in, **Settings → System check** shows that every database update has been applied.
+
+### Hosting somewhere else
+
+UniDock is a standard Next.js app, so any Node host works (`npm run build && npm start`). Set the three Supabase values from [`.env.example`](.env.example) and `SUPABASE_DB_URL` (Supabase → Connect → Session pooler). The build applies the database updates. Then open the site and answer the setup questions. Outside Vercel, call `/api/cron/daily` once a day with your `CRON_SECRET` (Vercel does this from `vercel.json`).
 
 ## Run it locally
 
 ```bash
 npm install
 cp .env.example .env.local   # then fill in the Supabase values
-npm run seed:demo            # creates a company, its admin and demo employees
-npm run dev                  # http://localhost:3000
+npm run dev                  # http://localhost:3000, which opens the setup questions
 ```
 
-Apply the database first: either run `supabase db push` with the [Supabase CLI](https://supabase.com/docs/guides/cli), or paste each file in `supabase/migrations/` into the Supabase SQL editor in filename order.
+Apply the database first: either run `supabase db push` with the [Supabase CLI](https://supabase.com/docs/guides/cli), or paste each file in `supabase/migrations/` into the Supabase SQL editor in filename order. For a company full of sample people instead, run `npm run seed:demo`.
 
 ## Scripts
 

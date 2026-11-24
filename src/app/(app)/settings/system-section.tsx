@@ -2,6 +2,7 @@ import { CheckCircle2, CircleAlert, CircleHelp } from 'lucide-react';
 import { DATABASE_UPDATES, UNCHECKABLE } from '@/lib/domain/system-check';
 import { getPageContext } from '@/lib/page';
 import { pushConfigured } from '@/lib/server/push';
+import { supabaseSecretKey } from '@/lib/env';
 
 /** Which database updates have been run, and which server settings are in place. */
 export async function SystemSection() {
@@ -18,7 +19,7 @@ export async function SystemSection() {
   const missing = results.filter((result) => !result.ok);
 
   const settings = [
-    { name: 'SUPABASE_SERVICE_ROLE_KEY', ok: Boolean(process.env.SUPABASE_SERVICE_ROLE_KEY), needed: 'Adding people, passwords, sign-up emails and device alerts' },
+    { name: 'SUPABASE_SERVICE_ROLE_KEY', ok: Boolean(supabaseSecretKey()), needed: 'Adding people, passwords, sign-up emails and device alerts' },
     { name: 'Device alert keys (VAPID)', ok: pushConfigured(), needed: 'Alerts on phones and computers' },
     { name: 'CRON_SECRET', ok: Boolean(process.env.CRON_SECRET), needed: 'Optional: protects the daily job that creates recurring projects' },
   ];

@@ -118,10 +118,19 @@ Everyone can always see and act on their own things: assigned tasks, their own a
 - `company_views` holds the company the owner has stepped into. `view_company(org)` sets it, and `view_company(null)` clears it.
 - New companies, each with its first admin, are created by `/api/companies` using the service key. New companies get the default roles and point rules through triggers on `organizations`.
 
+## First-run setup
+
+- A fresh install sends every visitor to `/setup` (`src/app/setup`). The login page does the same while no company exists (`needsSetup` in `src/lib/server/setup.ts`).
+- The questions: company name and PNG logo, the admin's name, email and password, the Supabase secret key, then the extras (KPI system, invoice generation, calendar). Nothing is saved until the last step.
+- The secret key proves the person owns the install. `ownsProject` compares it with the server's key, or tries it on the project's auth admin API. It is never stored.
+- `POST /api/setup/complete` creates the company (its standard roles come with it), the logo, the admin and the owner row, and stores the switched-off extras in `organizations.settings.hidden_sections`. It refuses once any company exists.
+- Supabase settings are read through `src/lib/env.ts`, which accepts both UniDock's names and the Vercel integration's names.
+
 ## 6. Database updates (migrations)
 
 - Add a file `supabase/migrations/2026MMDD0000NN_name.sql`, numbered after the last one.
-- **Pushing to `main` applies it to the live database automatically** (`.github/workflows/db-update.yml`, using the `SUPABASE_DB_URL` secret, which is the Session pooler connection string). Check the run under GitHub → Actions → Database update.
+- **Every build applies new migrations first** (`scripts/migrate.mjs`, run by `npm run build`), when `SUPABASE_DB_URL` or the Vercel integration's `POSTGRES_URL_NON_POOLING` is set. Set `SKIP_DB_MIGRATIONS=true` to turn this off.
+- **Pushing to `main` can also apply it from GitHub** (`.github/workflows/db-update.yml`, using the `SUPABASE_DB_URL` secret, which is the Session pooler connection string). Check the run under GitHub → Actions → Database update.
 - Run **Database update** by hand to preview: it's a dry run by default.
 - Write updates that are safe for existing data: use `if not exists`, give defaults for new columns, and backfill where needed. The app must keep working before an update has run. Pages check for a column or table (`'col' in row`, or an error on the query) and hide the feature until it exists.
 - Add a probe for each update to `src/lib/domain/system-check.ts`, so Settings → System check shows it. Put updates that only change data in `UNCHECKABLE`.

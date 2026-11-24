@@ -1,6 +1,7 @@
 import { createPrivateKey, sign, type KeyObject } from 'node:crypto';
 import { wants } from '@/lib/domain/notification-kind';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { supabaseSecretKey } from '@/lib/env';
 
 // Web Push without a message body: the push only wakes the device, which then
 // asks the app what is new (see public/sw.js). That keeps this to one signed
@@ -43,7 +44,7 @@ export function vapidToken(key: KeyObject, audience: string, subject: string, no
 }
 
 export function pushConfigured(): boolean {
-  return Boolean(process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY && process.env.SUPABASE_SERVICE_ROLE_KEY);
+  return Boolean(process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY && supabaseSecretKey());
 }
 
 /** 'sent', 'gone' (the device no longer accepts pushes) or 'failed'. */

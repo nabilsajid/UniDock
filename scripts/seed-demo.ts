@@ -8,8 +8,8 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import team from './demo-team.json';
 
-const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const url = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL;
+const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SECRET_KEY;
 const adminEmail = process.env.DEMO_USER_EMAIL;
 const adminPassword = process.env.DEMO_USER_PASSWORD;
 const employeePassword = process.env.DEMO_EMPLOYEE_PASSWORD;

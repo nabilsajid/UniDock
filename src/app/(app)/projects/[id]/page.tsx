@@ -16,6 +16,7 @@ import { ActionButton, ApiForm, ResourceManager } from '@/components/resource-ma
 import type { Field } from '@/components/types';
 import { label, money } from '@/lib/format';
 import { asRows, enumOptions, getPageContext, peopleOptions, rowsOf } from '@/lib/page';
+import { hiddenSections } from '@/lib/domain/sections';
 import { TASK_KINDS, TASK_KIND_LABEL, TASK_KIND_SINGLE, deliveryCounts, describeFixed, extrasForMonth, planTasksFromFixed, thumbnailState, type TaskKind } from '@/lib/domain/deliverables';
 import { titleTags } from '@/lib/domain/roles';
 import type { Client, Profile, Project, ProjectComment, ProjectMember, Role, Task } from '@/types/database';
@@ -95,6 +96,11 @@ export default async function ProjectPage({
   const billing = await (async () => {
     const canInvoice = isAdmin || canEdit('cashflow');
     if (!monthly || !selectedMonth || !(canInvoice || can('cashflow'))) return { ready: false, canInvoice, invoices: [], extras: [], rates: {} as Record<string, number> };
+    // The company switched off invoice generation (Settings → Company → Features).
+    const look = await supabase.from('organizations').select('settings').eq('id', orgId).maybeSingle();
+    if (!look.error && hiddenSections((look.data as { settings?: unknown } | null)?.settings).includes('invoices')) {
+      return { ready: false, canInvoice, invoices: [], extras: [], rates: {} as Record<string, number> };
+    }
     const result = await supabase
       .from('invoices')
       .select('id, invoice_number, amount, status, is_extras')

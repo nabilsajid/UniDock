@@ -1,12 +1,16 @@
 /**
  * Features a company can switch off in Settings → Company. Core pages always stay.
  * Page features hide their menu item; "points" hides the points, attendance,
- * bonuses and rules tabs of Employees, keeping the team list.
+ * bonuses and rules tabs of Employees, keeping the team list. "invoices" hides
+ * making invoices from projects and the invoice settings; invoices stay in Cash
+ * Flow, because payments received are recorded against them.
  */
-export const OPTIONAL_SECTIONS = ['/calendar', '/leave', '/logistics', 'points'] as const;
+export const OPTIONAL_SECTIONS = ['/kpi', 'invoices', '/calendar', '/leave', '/logistics', 'points'] as const;
 export type OptionalSection = (typeof OPTIONAL_SECTIONS)[number];
 
 export const SECTION_LABEL: Record<OptionalSection, string> = {
+  '/kpi': 'KPI system',
+  invoices: 'Invoice generation',
   '/calendar': 'Calendar',
   '/leave': 'Leave',
   '/logistics': 'Equipment & Costs',
@@ -15,6 +19,8 @@ export const SECTION_LABEL: Record<OptionalSection, string> = {
 
 /** What each feature is, and the data removed if it is switched off with its data. */
 export const SECTION_INFO: Record<OptionalSection, { about: string; data: string | null }> = {
+  '/kpi': { about: 'Performance numbers: on-time delivery, first-time approval, revenue per client and points per person.', data: null },
+  invoices: { about: 'Monthly and extras invoices made from projects, with your logo, signature and payment details.', data: null },
   '/calendar': { about: 'A month view of due dates, shoots and leave.', data: null },
   '/leave': { about: 'Asking for leave, approving it, and monthly leave records.', data: 'every leave request' },
   '/logistics': { about: 'The equipment register, checkouts, needed items, fixed costs and travel.', data: 'the equipment register, checkouts and needed items' },

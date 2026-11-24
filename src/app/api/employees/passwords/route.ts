@@ -5,6 +5,7 @@ import { rememberPassword } from '@/lib/server/login-details';
 import { open } from '@/lib/server/secret-box';
 import { createAdminClient } from '@/lib/supabase/admin';
 import type { ApiContext } from '@/lib/api/crud';
+import { supabaseSecretKey } from '@/lib/env';
 
 // Letters and digits that are hard to mix up when read aloud or typed (no 0/O, 1/l/I).
 const ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789';
@@ -12,7 +13,7 @@ const randomPassword = (length = 10) => Array.from({ length }, () => ALPHABET[ra
 
 /** Every password on record that can still be read, by person. `ready` is false until the login details table exists. */
 async function onRecord(ctx: ApiContext): Promise<{ ready: boolean; passwords: Record<string, string> }> {
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const key = supabaseSecretKey();
   const { data, error } = await ctx.supabase
     .from('profile_credentials')
     .select('profile_id, password_cipher')

@@ -1,15 +1,30 @@
 import { createServerClient } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
 import { SESSION_COOKIE } from '@/lib/supabase/cookies';
+import { supabasePublicKey, supabaseUrl } from '@/lib/env';
 
 // Refreshes the Supabase session on every request and sends signed-out
 // visitors to the login page. API routes answer 401 themselves.
 export async function middleware(request: NextRequest) {
   let response = NextResponse.next({ request });
+  const { pathname: path } = request.nextUrl;
+
+  // The first-run setup is open to everyone; it checks for itself whether setup is still needed.
+  if (path === '/setup' || path.startsWith('/api/setup')) return response;
+  // Not connected to Supabase yet: every page shows the setup screen, which explains what to do.
+  if (!supabaseUrl() || !supabasePublicKey()) {
+    if (path.startsWith('/api')) {
+      return NextResponse.json({ error: { code: 'not_set_up', message: 'UniDock is not connected to Supabase yet.' } }, { status: 503 });
+    }
+    const url = request.nextUrl.clone();
+    url.pathname = '/setup';
+    url.search = '';
+    return NextResponse.redirect(url);
+  }
 
   const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    supabaseUrl(),
+    supabasePublicKey(),
     {
       cookieOptions: SESSION_COOKIE,
       cookies: {
