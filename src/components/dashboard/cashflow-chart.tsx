@@ -1,0 +1,46 @@
+'use client';
+
+import { Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
+import type { CashflowPoint } from '@/lib/domain/dashboard';
+import { money } from '@/lib/format';
+
+// Money in carries the accent colour; money out stays neutral grey. Both are
+// CSS variables, so the chart follows the light and dark themes.
+const INCOME = 'var(--color-primary)';
+const EXPENSES = 'var(--color-chart-muted)';
+
+function shortMonth(month: string): string {
+  return new Date(`${month.slice(0, 7)}-01T00:00:00Z`).toLocaleDateString('en-US', { month: 'short', timeZone: 'UTC' });
+}
+
+function compact(value: number): string {
+  if (Math.abs(value) >= 1_000_000) return `৳${(value / 1_000_000).toFixed(1).replace(/\.0$/, '')}M`;
+  if (Math.abs(value) >= 1_000) return `৳${(value / 1_000).toFixed(1).replace(/\.0$/, '')}k`;
+  return `৳${value}`;
+}
+
+/** Money received and spent per month, side by side. */
+export function CashflowChart({ data }: { data: CashflowPoint[] }) {
+  const rows = data.map((point) => ({ ...point, label: shortMonth(point.month) }));
+  return (
+    <div className="h-64 w-full">
+      <ResponsiveContainer width="100%" height="100%">
+        <BarChart data={rows} margin={{ top: 8, right: 8, bottom: 0, left: 0 }} barGap={4}>
+          <CartesianGrid stroke="var(--color-line)" strokeDasharray="3 3" vertical={false} />
+          <XAxis dataKey="label" tickLine={false} axisLine={{ stroke: 'var(--color-line)' }} tick={{ fill: 'var(--color-muted)', fontSize: 12 }} />
+          <YAxis tickLine={false} axisLine={false} width={56} tick={{ fill: 'var(--color-muted)', fontSize: 12 }} tickFormatter={compact} />
+          <Tooltip
+            cursor={{ fill: 'var(--color-subtle)' }}
+            formatter={(value, name) => [money(Number(value)), name]}
+            contentStyle={{ borderRadius: 8, border: '1px solid var(--color-line)', background: 'var(--color-card)', color: 'var(--color-ink)', fontSize: 13, boxShadow: '0 4px 12px rgb(15 23 42 / 0.08)' }}
+            labelStyle={{ color: 'var(--color-ink)' }}
+            itemStyle={{ color: 'var(--color-ink)' }}
+          />
+          <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 13, color: 'var(--color-muted)' }} />
+          <Bar dataKey="income" name="Money in" fill={INCOME} radius={[4, 4, 0, 0]} maxBarSize={28} />
+          <Bar dataKey="expenses" name="Money out" fill={EXPENSES} radius={[4, 4, 0, 0]} maxBarSize={28} />
+        </BarChart>
+      </ResponsiveContainer>
+    </div>
+  );
+}

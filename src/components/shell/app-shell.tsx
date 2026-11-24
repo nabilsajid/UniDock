@@ -1,0 +1,580 @@
+'use client';
+
+import { Search, Check, ChevronDown, ChevronRight, ChevronsUpDown, CircleUserRound, LogOut, Menu, Moon, PanelLeftClose, PanelLeftOpen, Sun, X } from 'lucide-react';
+import Link from 'next/link';
+import { usePathname, useRouter } from 'next/navigation';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { SearchBox } from '@/components/search-box';
+import { UniDockLogo, UniDockMark } from '@/components/unidock-logo';
+import { AppInstall } from '@/components/app-install';
+import { NavProgress } from '@/components/nav-progress';
+import { RolePreviewBar } from '@/components/role-preview';
+import { cn } from '@/lib/utils';
+import { locate, navFor, type Viewer } from './nav';
+
+const STORAGE_KEY = 'sidebar-collapsed';
+const THEME_KEY = 'theme';
+
+function initials(name: string): string {
+  return name
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase() ?? '')
+    .join('');
+}
+
+function SidebarNav({
+  viewer,
+  badges,
+  collapsed,
+  pathname,
+  onNavigate,
+}: {
+  viewer: Viewer;
+  /** Counts shown beside links, keyed by href (things waiting for this person). */
+  badges: Record<string, number>;
+  collapsed: boolean;
+  pathname: string;
+  onNavigate?: () => void;
+}) {
+  // Highlight the tapped link straight away instead of waiting for the page to load.
+  const router = useRouter();
+  // Start loading a page the moment a finger or the pointer reaches its link, so it opens faster.
+  const warm = (href: string) => {
+    if (href !== pathname) router.prefetch(href);
+  };
+  const [tapped, setTapped] = useState<string | null>(null);
+  useEffect(() => setTapped(null), [pathname]);
+  const current = tapped ?? locate(pathname, viewer)?.href;
+  return (
+    <nav aria-label="Main" className="flex-1 overflow-y-auto px-3 py-4">
+      {navFor(viewer).map((group) => (
+        <div key={group.title} className="mb-5">
+          <p
+            className={cn(
+              'mb-1.5 px-3 text-[11px] font-semibold uppercase tracking-wider text-sidebar-muted',
+              collapsed && 'sr-only',
+            )}
+          >
+            {group.title}
+          </p>
+          <ul className="space-y-0.5">
+            {group.items.map((item) => {
+              const active = item.href === current;
+              const Icon = item.icon;
+              return (
+                <li key={item.href}>
+                  <Link
+                    href={item.href}
+                    prefetch={false}
+                    onPointerEnter={() => warm(item.href)}
+                    onTouchStart={() => warm(item.href)}
+                    onFocus={() => warm(item.href)}
+                    onClick={() => {
+                      setTapped(item.href);
+                      onNavigate?.();
+                    }}
+                    aria-current={active ? 'page' : undefined}
+                    title={collapsed ? item.label : undefined}
+                    className={cn(
+                      'relative flex h-10 items-center gap-3 rounded-control px-3 text-[13px] font-medium no-underline transition-colors duration-100 hover:no-underline active:scale-[0.98]',
+                      active
+                        ? 'nav-active'
+                        : 'text-sidebar-text hover:bg-sidebar-hover hover:text-white',
+                      collapsed && 'justify-center px-0',
+                    )}
+                  >
+                    <Icon size={17} aria-hidden className="shrink-0" />
+                    <span className={cn('flex-1 truncate', collapsed && 'sr-only')}>{item.label}</span>
+                    {badges[item.href] ? (
+                      <span
+                        className={cn(
+                          // My Tasks shows deadlines close by or missed, so its marker is red.
+                          item.href === '/my-tasks' ? 'rounded-full bg-danger px-1.5 text-[11px] font-semibold leading-5 text-white' : 'rounded-full bg-warning px-1.5 text-[11px] font-semibold leading-5 text-white',
+                          collapsed && 'absolute right-1.5 top-1 h-2 w-2 p-0 text-[0px] leading-none',
+                        )}
+                        aria-label={item.href === '/my-tasks' ? `${badges[item.href]} due soon or overdue` : `${badges[item.href]} waiting`}
+                      >
+                        {badges[item.href]}
+                      </span>
+                    ) : null}
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      ))}
+    </nav>
+  );
+}
+
+function Brand({ orgName, orgLogo = null, collapsed, owner = false }: { orgName: string; orgLogo?: string | null; collapsed: boolean; owner?: boolean }) {
+  // The app's own logo (UniDock) on top, and the company using it just below,
+  // so everyone can see whose workspace this is. For the owner it opens the
+  // list of companies, to switch or add one.
+  const tag = (
+    <>
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src={orgLogo ?? '/unidock-mark.svg'} alt="" width={20} height={20} style={{ objectFit: 'contain' }} />
+      {collapsed ? null : (
+        <span className="min-w-0 flex-1">
+          <small>Company</small>
+          <span className="block truncate">{orgName}</span>
+        </span>
+      )}
+      {owner && !collapsed ? <ChevronsUpDown size={14} aria-hidden className="shrink-0 opacity-60" /> : null}
+    </>
+  );
+  return (
+    <>
+      <div className={cn('flex h-14 shrink-0 items-center border-b border-white/10 px-4', collapsed && 'justify-center px-0')}>
+        {collapsed ? <UniDockMark size={28} /> : <UniDockLogo />}
+      </div>
+      {owner ? (
+        <Link
+          href="/companies"
+          className={cn('company-tag company-tag-link', collapsed && 'collapsed')}
+          title={collapsed ? `Company: ${orgName} (switch)` : 'Switch or add a company'}
+        >
+          {tag}
+        </Link>
+      ) : (
+        <div className={cn('company-tag', collapsed && 'collapsed')} title={collapsed ? `Company: ${orgName}` : undefined}>
+          {tag}
+        </div>
+      )}
+    </>
+  );
+}
+
+/** Brief confirmations such as "Saved." or "Sent to an admin for approval." */
+function Toast() {
+  const [toast, setToast] = useState<{ message: string; tone: string; id: number } | null>(null);
+
+  useEffect(() => {
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const show = (event: Event) => {
+      const detail = (event as CustomEvent).detail as { message?: string; tone?: string } | string;
+      const message = typeof detail === 'string' ? detail : (detail?.message ?? '');
+      const tone = typeof detail === 'string' ? 'plain' : (detail?.tone ?? 'plain');
+      setToast({ message, tone, id: Date.now() });
+      clearTimeout(timer);
+      timer = setTimeout(() => setToast(null), tone === 'success' ? 3200 : 2600);
+    };
+    window.addEventListener('app:toast', show);
+    return () => {
+      window.removeEventListener('app:toast', show);
+      clearTimeout(timer);
+    };
+  }, []);
+
+  return (
+    <div aria-live="polite" role="status" className="pointer-events-none fixed inset-x-0 bottom-5 z-50 flex justify-center px-4">
+      {toast ? (
+        <span
+          key={toast.id}
+          className={cn(
+            'toast-in flex items-center gap-2 rounded-full border px-4 py-2 text-[13px] font-medium shadow-lg',
+            'border-line-strong bg-ink text-page',
+          )}
+        >
+          {toast.tone === 'success' ? (
+            <span className="pop flex h-5 w-5 items-center justify-center rounded-full bg-success text-white">
+              <Check size={13} aria-hidden strokeWidth={3} />
+            </span>
+          ) : null}
+          {toast.message}
+        </span>
+      ) : null}
+    </div>
+  );
+}
+
+function ThemeToggle() {
+  const [dark, setDark] = useState(false);
+
+  // The inline script in the root layout has already applied the saved theme.
+  useEffect(() => setDark(document.documentElement.dataset.theme === 'dark'), []);
+
+  function toggle() {
+    const next = dark ? 'light' : 'dark';
+    document.documentElement.dataset.theme = next;
+    try {
+      window.localStorage.setItem(THEME_KEY, next);
+    } catch {
+      // Ignore: the choice just won't be remembered.
+    }
+    setDark(!dark);
+  }
+
+  return (
+    <div className="flex items-center gap-1.5 text-muted">
+      <Sun size={15} aria-hidden className={cn('hidden sm:block', !dark && 'text-ink')} />
+      <button
+        type="button"
+        role="switch"
+        aria-checked={dark}
+        aria-label="Dark mode"
+        title={dark ? 'Switch to light mode' : 'Switch to dark mode'}
+        onClick={toggle}
+        className={cn(
+          'relative h-6 w-11 shrink-0 rounded-full border border-line-strong transition-colors duration-150',
+          dark ? 'bg-primary' : 'bg-subtle',
+        )}
+      >
+        <span
+          className={cn(
+            'absolute left-0.5 top-1/2 flex h-[18px] w-[18px] -translate-y-1/2 items-center justify-center rounded-full shadow-sm transition-transform duration-150 ease-out',
+            dark ? 'translate-x-5 bg-on-primary text-primary' : 'translate-x-0 bg-card text-muted',
+          )}
+        >
+          {dark ? <Moon size={11} aria-hidden /> : <Sun size={11} aria-hidden />}
+        </span>
+      </button>
+      <Moon size={15} aria-hidden className={cn('hidden sm:block', dark && 'text-ink')} />
+    </div>
+  );
+}
+
+function UserMenu({ name, jobTitle, isAdmin, photo = null }: { name: string; jobTitle: string | null; isAdmin: boolean; photo?: string | null }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const onPointer = (event: PointerEvent) => {
+      if (ref.current && !ref.current.contains(event.target as Node)) setOpen(false);
+    };
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setOpen(false);
+    };
+    document.addEventListener('pointerdown', onPointer);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('pointerdown', onPointer);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [open]);
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        type="button"
+        aria-haspopup="menu"
+        aria-expanded={open}
+        onClick={() => setOpen((value) => !value)}
+        className="flex items-center gap-2.5 rounded-control py-1 pl-1 pr-2 transition-colors hover:bg-subtle"
+      >
+        <span className="flex h-8 w-8 items-center justify-center overflow-hidden rounded-full bg-primary-soft text-xs font-semibold text-primary-strong">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          {photo ? <img src={photo} alt="" className="user-photo" /> : initials(name) || '?'}
+        </span>
+        <span className="hidden text-left leading-tight sm:block">
+          <span className="block text-[13px] font-medium text-ink">{name}</span>
+          <span className="block max-w-[180px] truncate text-[11px] text-muted">{jobTitle ?? 'No role yet'}</span>
+        </span>
+        <ChevronDown size={15} aria-hidden className="text-muted" />
+      </button>
+      {open ? (
+        <div role="menu" className="absolute right-0 z-30 mt-2 w-56 rounded-card border border-line bg-card p-1.5 shadow-lg shadow-slate-900/5">
+          <div className="border-b border-line px-2.5 pb-2.5 pt-1.5">
+            <p className="truncate text-[13px] font-medium text-ink">{name}</p>
+            <p className="text-xs text-muted">
+              {jobTitle ?? 'No role yet'}
+              {isAdmin ? ' · Full access' : ''}
+            </p>
+          </div>
+          <Link
+            href="/profile?tab=me"
+            role="menuitem"
+            onClick={() => setOpen(false)}
+            className="mt-1.5 flex w-full items-center gap-2 rounded-control px-2.5 py-2 text-left text-[13px] text-ink no-underline transition-colors hover:bg-subtle hover:no-underline"
+          >
+            <CircleUserRound size={15} aria-hidden />
+            My profile
+          </Link>
+          <form action="/auth/signout" method="post">
+            <button
+              type="submit"
+              role="menuitem"
+              className="flex w-full items-center gap-2 rounded-control px-2.5 py-2 text-left text-[13px] text-ink transition-colors hover:bg-subtle"
+            >
+              <LogOut size={15} aria-hidden />
+              Sign out
+            </button>
+          </form>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+export function AppShell({
+  orgName,
+  userName,
+  jobTitle,
+  isAdmin,
+  segments,
+  notice,
+  badges = {},
+  previewRole = null,
+  owner = false,
+  hiddenSections = [],
+  orgLogo = null,
+  userPhoto = null,
+  children,
+}: {
+  orgName: string;
+  userName: string;
+  jobTitle: string | null;
+  isAdmin: boolean;
+  segments: string[];
+  /** A message shown above every page, for example a pending database update. */
+  notice?: string | null;
+  badges?: Record<string, number>;
+  /** Set while an admin is viewing the app as another role. */
+  previewRole?: string | null;
+  /** The app's owner: the company tag opens the list of companies. */
+  owner?: boolean;
+  /** Set while the owner is inside another company. */
+  viewingCompany?: string | null;
+  /** Menu sections the company switched off. */
+  hiddenSections?: string[];
+  /** The company's own logo and the person's photo, when set. */
+  orgLogo?: string | null;
+  userPhoto?: string | null;
+  children: ReactNode;
+}) {
+  const pathname = usePathname();
+  const hiddenKey = hiddenSections.join(',');
+  const viewer = useMemo<Viewer>(
+    () => ({ isAdmin, segments: new Set(segments), hidden: new Set(hiddenKey ? hiddenKey.split(',') : []) }),
+    [isAdmin, segments, hiddenKey],
+  );
+  const [collapsed, setCollapsed] = useState(false);
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const here = locate(pathname, viewer);
+
+  // Remember the collapsed sidebar on this device.
+  useEffect(() => {
+    try {
+      setCollapsed(window.localStorage.getItem(STORAGE_KEY) === '1');
+    } catch {
+      // Storage unavailable: keep the default.
+    }
+  }, []);
+
+  function toggleCollapsed() {
+    setCollapsed((value) => {
+      try {
+        window.localStorage.setItem(STORAGE_KEY, value ? '0' : '1');
+      } catch {
+        // Ignore: the choice just won't be remembered.
+      }
+      return !value;
+    });
+  }
+
+  // Swiping the side panel open and closed on phones. While a finger is on the
+  // screen, `drag` is how far open the panel is (0 closed, 1 open) and the
+  // panel follows the finger; on release it settles open or closed.
+  const [drag, setDrag] = useState<number | null>(null);
+  const openRef = useRef(mobileOpen);
+  openRef.current = mobileOpen;
+
+  useEffect(() => {
+    const PANEL = () => Math.min(270, window.innerWidth * 0.85);
+    let start: { x: number; y: number; t: number; open: boolean } | null = null;
+    let decided: 'swipe' | 'scroll' | null = null;
+    let progress = 0;
+
+    // A sideways swipe inside something that scrolls sideways (a board, a wide
+    // table) scrolls it, unless it is already at its left edge.
+    const scrollsSideways = (target: EventTarget | null) => {
+      for (let el = target as HTMLElement | null; el && el !== document.body; el = el.parentElement) {
+        if (el.matches?.('input, textarea, select, [contenteditable="true"]')) return true;
+        const style = window.getComputedStyle(el);
+        if ((style.overflowX === 'auto' || style.overflowX === 'scroll') && el.scrollWidth > el.clientWidth + 1 && el.scrollLeft > 0) return true;
+      }
+      return false;
+    };
+
+    const onStart = (event: TouchEvent) => {
+      if (window.innerWidth >= 1024 || event.touches.length !== 1) return;
+      const touch = event.touches[0];
+      const open = openRef.current;
+      if (!open && scrollsSideways(event.target)) return;
+      start = { x: touch.clientX, y: touch.clientY, t: Date.now(), open };
+      decided = null;
+      progress = open ? 1 : 0;
+    };
+    const onMove = (event: TouchEvent) => {
+      if (!start) return;
+      const touch = event.touches[0];
+      const dx = touch.clientX - start.x;
+      const dy = touch.clientY - start.y;
+      if (!decided) {
+        if (Math.abs(dx) < 10 && Math.abs(dy) < 10) return;
+        // Mostly sideways, and in the direction that makes sense: right to open, left to close.
+        const sideways = Math.abs(dx) > Math.abs(dy) * 1.3;
+        decided = sideways && (start.open ? dx < 0 : dx > 0) ? 'swipe' : 'scroll';
+        if (decided === 'scroll') {
+          start = null;
+          return;
+        }
+      }
+      event.preventDefault();
+      progress = Math.max(0, Math.min(1, (start.open ? 1 : 0) + dx / PANEL()));
+      setDrag(progress);
+    };
+    const onEnd = () => {
+      if (!start || decided !== 'swipe') {
+        start = null;
+        return;
+      }
+      const fast = Date.now() - start.t < 250;
+      const open = start.open ? progress > (fast ? 0.85 : 0.6) : progress > (fast ? 0.15 : 0.35);
+      start = null;
+      setMobileOpen(open);
+      setDrag(null);
+    };
+
+    document.addEventListener('touchstart', onStart, { passive: true });
+    document.addEventListener('touchmove', onMove, { passive: false });
+    document.addEventListener('touchend', onEnd);
+    document.addEventListener('touchcancel', onEnd);
+    return () => {
+      document.removeEventListener('touchstart', onStart);
+      document.removeEventListener('touchmove', onMove);
+      document.removeEventListener('touchend', onEnd);
+      document.removeEventListener('touchcancel', onEnd);
+    };
+  }, []);
+
+  // Close the mobile menu on navigation and on Escape.
+  useEffect(() => setMobileOpen(false), [pathname]);
+  useEffect(() => {
+    if (!mobileOpen) return;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setMobileOpen(false);
+    };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [mobileOpen]);
+
+  return (
+    <div className="app-bg min-h-screen">
+      {/* One very faint warm light at the top of the page. Decorative only. */}
+      <div className="app-glow" aria-hidden>
+        <span />
+      </div>
+      <NavProgress />
+      {/* Desktop sidebar */}
+      <aside
+        className={cn(
+          'fixed inset-y-0 left-0 z-20 hidden flex-col border-r border-sidebar-line bg-sidebar transition-[width] duration-200 ease-out lg:flex',
+          collapsed ? 'w-16' : 'w-[250px]',
+        )}
+      >
+        <Brand orgName={orgName} orgLogo={orgLogo} collapsed={collapsed} owner={owner} />
+        <SidebarNav viewer={viewer} badges={badges} collapsed={collapsed} pathname={pathname} />
+        <div className="border-t border-white/10 p-3">
+          <button
+            type="button"
+            onClick={toggleCollapsed}
+            aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+            aria-expanded={!collapsed}
+            className={cn(
+              'flex h-9 w-full items-center gap-3 rounded-control px-3 text-[13px] font-medium text-sidebar-text transition-colors hover:bg-sidebar-hover hover:text-white',
+              collapsed && 'justify-center px-0',
+            )}
+          >
+            {collapsed ? <PanelLeftOpen size={17} aria-hidden /> : <PanelLeftClose size={17} aria-hidden />}
+            <span className={cn(collapsed && 'sr-only')}>Collapse</span>
+          </button>
+        </div>
+      </aside>
+
+      {/* Mobile drawer */}
+      {mobileOpen || drag !== null ? (
+        <div className="fixed inset-0 z-40 lg:hidden" role="dialog" aria-modal="true" aria-label="Navigation">
+          <button
+            type="button"
+            aria-label="Close navigation"
+            className={cn('absolute inset-0 h-full w-full cursor-default bg-slate-950/60', drag === null && 'fade-in')}
+            style={drag === null ? undefined : { opacity: drag }}
+            onClick={() => setMobileOpen(false)}
+          />
+          <aside
+            className={cn('relative flex h-full w-[270px] max-w-[85vw] flex-col bg-sidebar', drag === null && 'drawer-in')}
+            style={drag === null ? undefined : { transform: `translateX(${(drag - 1) * 100}%)` }}
+          >
+            <Brand orgName={orgName} orgLogo={orgLogo} collapsed={false} owner={owner} />
+            <button
+              type="button"
+              aria-label="Close navigation"
+              onClick={() => setMobileOpen(false)}
+              className="absolute right-3 top-3 flex h-8 w-8 items-center justify-center rounded-control text-sidebar-text hover:bg-sidebar-hover hover:text-white"
+            >
+              <X size={18} aria-hidden />
+            </button>
+            <SidebarNav viewer={viewer} badges={badges} collapsed={false} pathname={pathname} onNavigate={() => setMobileOpen(false)} />
+          </aside>
+        </div>
+      ) : null}
+
+      <div className={cn('transition-[padding] duration-200 ease-out', collapsed ? 'lg:pl-16' : 'lg:pl-[250px]')}>
+        <header className="sticky top-0 z-10 flex h-14 items-center gap-2 border-b border-line bg-card/90 px-3 backdrop-blur sm:gap-3 sm:px-6">
+          <button
+            type="button"
+            aria-label="Open navigation"
+            onClick={() => setMobileOpen(true)}
+            className="flex h-10 w-10 items-center justify-center rounded-control text-ink transition-colors duration-100 hover:bg-subtle active:scale-95 lg:hidden"
+          >
+            <Menu size={19} aria-hidden />
+          </button>
+          <nav aria-label="Breadcrumb" className="flex min-w-0 flex-1 items-center gap-1.5 text-[13px]">
+            {here ? (
+              <>
+                <span className="hidden text-muted sm:inline">{here.group}</span>
+                <ChevronRight size={14} aria-hidden className="hidden text-line-strong sm:inline" />
+                {pathname === here.href ? (
+                  <span className="truncate font-medium text-ink">{here.label}</span>
+                ) : (
+                  <>
+                    <Link href={here.href} className="truncate text-muted hover:text-ink">
+                      {here.label}
+                    </Link>
+                    <ChevronRight size={14} aria-hidden className="text-line-strong" />
+                    <span className="font-medium text-ink">Details</span>
+                  </>
+                )}
+              </>
+            ) : (
+              <span className="font-medium text-ink">UniDock</span>
+            )}
+          </nav>
+          <SearchBox />
+          <Link href="/search" aria-label="Search" className="topbar-search-icon">
+            <Search size={18} aria-hidden />
+          </Link>
+          <AppInstall />
+          <ThemeToggle />
+          <UserMenu name={userName} jobTitle={jobTitle} isAdmin={isAdmin} photo={userPhoto} />
+        </header>
+        {previewRole ? <RolePreviewBar roleName={previewRole} /> : null}
+        <main className="mx-auto w-full max-w-[1280px] px-4 py-6 sm:px-6">
+          {notice ? (
+            <p role="alert" className="mb-5 rounded-card border border-warning bg-warning-soft px-4 py-3 text-[13px] text-warning-strong">
+              {notice}
+            </p>
+          ) : null}
+          {children}
+        </main>
+        <Toast />
+      </div>
+    </div>
+  );
+}

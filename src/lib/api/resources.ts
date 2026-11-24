@@ -1,0 +1,245 @@
+import type { ApiContext, ResourceConfig } from './crud';
+import * as v from '../validation';
+
+// One entry per table exposed through the generic CRUD handlers.
+// `read` names the segments whose holders may see a resource; admins always may.
+// `propose` names the segments whose holders may suggest changes: those are
+// stored as change requests and only applied once an admin approves them.
+// Rows are narrowed further by row level security (for example to your own tasks).
+
+const now = () => new Date().toISOString();
+
+export const clients: ResourceConfig = {
+  table: 'clients',
+  label: 'client',
+  propose: ['cashflow', 'projects'],
+  read: ['projects', 'cashflow'],
+  createSchema: v.clientCreate,
+  updateSchema: v.clientUpdate,
+  orderBy: { column: 'name', ascending: true },
+};
+
+export const projects: ResourceConfig = {
+  table: 'projects',
+  label: 'project',
+  propose: ['projects'],
+  select: '*, client:clients(id, name)',
+  filters: ['client_id', 'status'],
+};
+
+/** Whether the database lets project roles write directly (it does after the project rules update). */
+export async function directProjectsReady(ctx: { supabase: ApiContext['supabase'] }): Promise<boolean> {
+  const probe = await ctx.supabase.from('notifications').select('id').limit(1);
+  return !probe.error;
+}
+
+// Roles with editing access to projects add and change deliverables directly.
+// Approving one, or setting its points, stays an admin's decision.
+export const tasks: ResourceConfig = {
+  table: 'tasks',
+  label: 'task',
+  write: ['projects'],
+  propose: ['projects'],
+  approvalWhen: async (ctx, data) =>
+    data.status === 'approved' || (data.points_value !== undefined && data.points_value !== null) || !(await directProjectsReady(ctx)),
+  select: '*, assignee:profiles(id, full_name, job_title)',
+  createSchema: v.taskCreate,
+  updateSchema: v.taskUpdate,
+  filters: ['project_id', 'assignee_id', 'status'],
+  orderBy: { column: 'position', ascending: true },
+};
+
+export const submissions: ResourceConfig = {
+  table: 'task_submissions',
+  updateSchema: v.submissionReview,
+  onUpdate: (ctx, data) =>
+    data.review_status === 'pending'
+      ? { reviewed_by: null, reviewed_at: null }
+      : { reviewed_by: ctx.userId, reviewed_at: now() },
+};
+
+export const equipment: ResourceConfig = {
+  table: 'equipment',
+  label: 'equipment',
+  propose: ['equipment'],
+  select: '*, holder:profiles(id, full_name, job_title)',
+  createSchema: v.equipmentCreate,
+  updateSchema: v.equipmentUpdate,
+  filters: ['status', 'current_holder_id'],
+  orderBy: { column: 'name', ascending: true },
+};
+
+export const fixedExpenses: ResourceConfig = {
+  table: 'fixed_expenses',
+  label: 'fixed expense',
+  propose: ['costs'],
+  read: ['costs', 'cashflow'],
+  createSchema: v.fixedExpenseCreate,
+  updateSchema: v.fixedExpenseUpdate,
+  orderBy: { column: 'name', ascending: true },
+};
+
+export const expenses: ResourceConfig = {
+  table: 'expenses',
+  label: 'expense',
+  propose: ['cashflow', 'costs'],
+  read: ['cashflow', 'costs'],
+  createSchema: v.expenseCreate,
+  updateSchema: v.expenseUpdate,
+  filters: ['category', 'account_id', 'fixed_expense_id'],
+  orderBy: { column: 'expense_date', ascending: false },
+  onCreate: (ctx, data) => ({
+    created_by: ctx.userId,
+    // Only an admin chooses who travelled.
+    ...(ctx.profile.access_role !== 'admin' && data.category === 'transport' ? { traveler_id: ctx.userId } : {}),
+  }),
+  recordsApprover: true,
+  // Small costs skip approval: up to the amount an admin set under Settings, Rules.
+  // Equipment purchases always wait. The database checks the same rule.
+  directWhen: async (ctx, data) => {
+    const amount = Number(data.amount);
+    if (data.category === 'equipment' || !Number.isFinite(amount) || amount <= 0) return false;
+    const { data: org, error } = await ctx.supabase.from('organizations').select('*').eq('id', ctx.profile.org_id).maybeSingle();
+    const limit = Number((org as { auto_approve_limit?: number | string } | null)?.auto_approve_limit ?? 0);
+    return !error && limit > 0 && amount <= limit;
+  },
+  // Only an admin chooses who travelled. A trip anyone else records is their own.
+  onPropose: (ctx, data) => (data.category === 'transport' ? { traveler_id: ctx.userId } : {}),
+};
+
+export const accounts: ResourceConfig = {
+  table: 'accounts',
+  label: 'account',
+  propose: ['cashflow'],
+  read: ['cashflow'],
+  createSchema: v.accountCreate,
+  updateSchema: v.accountUpdate,
+  orderBy: { column: 'name', ascending: true },
+};
+
+export const investors: ResourceConfig = {
+  table: 'investors',
+  label: 'investor',
+  propose: ['cashflow'],
+  read: ['cashflow'],
+  createSchema: v.investorCreate,
+  updateSchema: v.investorUpdate,
+  orderBy: { column: 'name', ascending: true },
+};
+
+export const investments: ResourceConfig = {
+  table: 'investments',
+  label: 'investment',
+  propose: ['cashflow'],
+  read: ['cashflow'],
+  createSchema: v.investmentCreate,
+  updateSchema: v.investmentUpdate,
+  filters: ['investor_id', 'account_id'],
+  orderBy: { column: 'received_on', ascending: false },
+  onCreate: (ctx) => ({ created_by: ctx.userId }),
+};
+
+export const invoices: ResourceConfig = {
+  table: 'invoices',
+  label: 'invoice',
+  propose: ['cashflow'],
+  read: ['cashflow'],
+  createSchema: v.invoiceCreate,
+  updateSchema: v.invoiceUpdate,
+  filters: ['client_id', 'project_id', 'status'],
+  orderBy: { column: 'issue_date', ascending: false },
+};
+
+export const payments: ResourceConfig = {
+  table: 'payments',
+  label: 'payment',
+  propose: ['cashflow'],
+  read: ['cashflow'],
+  createSchema: v.paymentCreate,
+  updateSchema: v.paymentUpdate,
+  filters: ['invoice_id', 'account_id'],
+  orderBy: { column: 'paid_on', ascending: false },
+};
+
+export const employees: ResourceConfig = {
+  table: 'profiles',
+  orderBy: { column: 'full_name', ascending: true },
+};
+
+export const attendance: ResourceConfig = {
+  table: 'attendance',
+  label: 'attendance',
+  propose: ['team_points'],
+  updateSchema: v.attendanceUpdate,
+  filters: ['employee_id', 'status', 'work_date'],
+  orderBy: { column: 'work_date', ascending: false },
+  onUpdate: (ctx, data) => {
+    if (!('status' in data)) return {};
+    return data.status === 'verified'
+      ? { verified_by: ctx.userId, verified_at: now() }
+      : { verified_by: null, verified_at: null };
+  },
+};
+
+export const violationTypes: ResourceConfig = {
+  table: 'violation_types',
+  label: 'violation type',
+  propose: ['team_points'],
+  createSchema: v.violationTypeCreate,
+  updateSchema: v.violationTypeUpdate,
+  orderBy: { column: 'name', ascending: true },
+};
+
+export const pointEntries: ResourceConfig = {
+  table: 'point_entries',
+  label: 'point entry',
+  propose: ['team_points'],
+  updateSchema: v.pointEntryUpdate,
+  filters: ['employee_id', 'period_month', 'source'],
+};
+
+export const bonuses: ResourceConfig = {
+  table: 'bonuses',
+  label: 'bonus',
+  propose: ['bonuses'],
+  updateSchema: v.bonusDecision,
+  filters: ['employee_id', 'period_month', 'status'],
+  orderBy: { column: 'period_month', ascending: false },
+  onUpdate: (ctx, data) =>
+    data.status === 'pending'
+      ? { decided_by: null, decided_at: null }
+      : { decided_by: ctx.userId, decided_at: now() },
+};
+
+export const roles: ResourceConfig = {
+  table: 'roles',
+  createSchema: v.roleCreate,
+  updateSchema: v.roleUpdate,
+  orderBy: { column: 'name', ascending: true },
+};
+
+// Anyone can add a needed item (custom POST); equipment roles manage the list.
+export const equipmentNeeds: ResourceConfig = {
+  table: 'equipment_needs',
+  write: ['equipment'],
+  updateSchema: v.equipmentNeedUpdate,
+  filters: ['status'],
+};
+
+// Anyone can send a broadcast (custom POST); only admins resolve or delete them.
+export const broadcasts: ResourceConfig = {
+  table: 'broadcasts',
+  updateSchema: v.broadcastUpdate,
+  filters: ['status'],
+  onUpdate: (ctx, data) =>
+    data.status === 'resolved'
+      ? { resolved_by: ctx.userId, resolved_at: now() }
+      : { resolved_by: null, resolved_at: null },
+};
+
+// Admins post notices (custom POST and PATCH turn a duration into an expiry);
+// everyone reads the ones that have not expired.
+export const notices: ResourceConfig = {
+  table: 'notices',
+  label: 'notice',
+};

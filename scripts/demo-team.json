@@ -1,0 +1,8 @@
+{
+  "admin": { "full_name": "Admin" },
+  "employees": [
+    { "full_name": "Rafi", "email": "rafi@example.com", "job_title": "Logistics Manager" },
+    { "full_name": "Rafin", "email": "rafin@example.com", "job_title": "Human Resource" },
+    { "full_name": "Sourav", "email": "sourav@example.com", "job_title": "Graphic Designer" }
+  ]
+}

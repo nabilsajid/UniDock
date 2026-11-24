@@ -1,0 +1,70 @@
+# Runs new database updates (supabase/migrations) on the live Supabase project
+# when they reach main, so they no longer have to be pasted into the SQL Editor.
+#
+# Off until this repository secret is added (Settings → Secrets and variables → Actions):
+#   SUPABASE_DB_URL        – the "Session pooler" connection string from Supabase → Connect,
+#                            with [YOUR-PASSWORD] replaced (GitHub cannot reach the direct address)
+# New, empty database: also add the repository variable FRESH_DATABASE=true (Settings → Secrets
+# and variables → Actions → Variables) so the first run applies every update. Remove it afterwards.
+# Database that already had updates run by hand: mark those as done first (see docs/ARCHITECTURE.md,
+# "Checks and automatic database updates"), otherwise Supabase would try to run them again.
+name: Database update
+
+on:
+  push:
+    branches: [main]
+    paths: ['supabase/migrations/**']
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Only show what would run, change nothing'
+        type: boolean
+        default: true
+
+concurrency:
+  group: database-update
+  cancel-in-progress: false
+
+jobs:
+  push:
+    runs-on: ubuntu-latest
+    env:
+      DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+      FRESH_DATABASE: ${{ vars.FRESH_DATABASE }}
+    steps:
+      - name: Skip when not set up
+        id: ready
+        run: |
+          if [ -z "$DB_URL" ]; then
+            echo "Database secrets are not set; nothing to do."
+            echo "go=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "go=true" >> "$GITHUB_OUTPUT"
+          fi
+      - if: steps.ready.outputs.go == 'true'
+        uses: actions/checkout@v4
+      # The Supabase CLI from npm (not GitHub releases, whose lookups are rate limited).
+      - if: steps.ready.outputs.go == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - if: steps.ready.outputs.go == 'true'
+        name: Install the Supabase CLI
+        run: |
+          npm install --no-save --no-audit --no-fund supabase@latest
+          echo "$PWD/node_modules/.bin" >> "$GITHUB_PATH"
+          npx supabase --version
+      - if: steps.ready.outputs.go == 'true'
+        name: Show what will run
+        run: |
+          set -o pipefail
+          supabase db push --db-url "$DB_URL" --dry-run 2>&1 | tee plan.txt
+          # Safety: if the first update is listed, the one-time "already done" step was skipped,
+          # and pushing would re-run every update on the live database. Stop instead.
+          if [ "$FRESH_DATABASE" != "true" ] && grep -q 20261112000001 plan.txt; then
+            echo "::error::Supabase thinks no updates have been run yet. For an empty database set the FRESH_DATABASE=true variable; otherwise run the one-time 'mark as done' SQL first (docs/ARCHITECTURE.md)."
+            exit 1
+          fi
+      - if: steps.ready.outputs.go == 'true' && !(github.event_name == 'workflow_dispatch' && inputs.dry_run)
+        name: Run the new updates
+        run: supabase db push --db-url "$DB_URL" --yes
