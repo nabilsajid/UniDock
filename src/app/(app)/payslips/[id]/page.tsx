@@ -59,8 +59,10 @@ export default async function PayslipPage({ params }: { params: Promise<{ id: st
       <article className="invoice-sheet">
         <div className="invoice-top">
           <div className="invoice-brand">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={logo} alt={org?.name ?? ''} className="invoice-logo" style={{ objectFit: 'contain', objectPosition: 'left' }} />
+            {logo ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={logo} alt={org?.name ?? ''} className="invoice-logo" style={{ objectFit: 'contain', objectPosition: 'left' }} />
+            ) : null}
             <p className="invoice-muted">{org?.name}</p>
             {org?.contact_address ? <p className="invoice-muted">{org.contact_address}</p> : null}
             {org?.trade_license ? <p className="invoice-muted">Trade licence {org.trade_license}</p> : null}
