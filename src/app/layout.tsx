@@ -32,8 +32,9 @@ const themeScript = `(function(){try{var t=localStorage.getItem('theme');if(t!==
 // The opening animation plays only when the app is started: the first page of
 // a new session, arrived at from outside the app. Moving between pages,
 // reloading, going back or returning to the app never plays it again. The
-// splash is hidden unless this script switches it on, and it removes itself.
-const splashScript = `(function(){try{var d=document.documentElement,s=sessionStorage;if(s.getItem('opened'))return;s.setItem('opened','1');var n=performance.getEntriesByType('navigation')[0];if(n&&n.type!=='navigate')return;if(document.referrer&&document.referrer.indexOf(location.origin)===0)return;if(window.matchMedia('(prefers-reduced-motion: reduce)').matches)return;d.dataset.splash='1';setTimeout(function(){delete d.dataset.splash;var e=document.querySelector('.splash');if(e)e.style.display='none';},1300);}catch(e){}})();`;
+// splash is hidden unless this script switches it on, and it removes itself. The first-run
+// setup has its own look, so the splash never plays there.
+const splashScript = `(function(){try{var d=document.documentElement,s=sessionStorage;if(location.pathname.indexOf('/setup')===0)return;if(s.getItem('opened'))return;s.setItem('opened','1');var n=performance.getEntriesByType('navigation')[0];if(n&&n.type!=='navigate')return;if(document.referrer&&document.referrer.indexOf(location.origin)===0)return;if(window.matchMedia('(prefers-reduced-motion: reduce)').matches)return;d.dataset.splash='1';setTimeout(function(){delete d.dataset.splash;var e=document.querySelector('.splash');if(e)e.style.display='none';},1300);}catch(e){}})();`;
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
