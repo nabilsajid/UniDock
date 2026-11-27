@@ -3,6 +3,7 @@ import { DATABASE_UPDATES, UNCHECKABLE } from '@/lib/domain/system-check';
 import { getPageContext } from '@/lib/page';
 import { pushConfigured } from '@/lib/server/push';
 import { supabaseSecretKey } from '@/lib/env';
+import { checkForUpdate } from '@/lib/server/updates';
 
 /** Which database updates have been run, and which server settings are in place. */
 export async function SystemSection() {
@@ -17,6 +18,7 @@ export async function SystemSection() {
     }),
   );
   const missing = results.filter((result) => !result.ok);
+  const update = await checkForUpdate();
 
   const settings = [
     { name: 'SUPABASE_SERVICE_ROLE_KEY', ok: Boolean(supabaseSecretKey()), needed: 'Adding people, passwords, sign-up emails and device alerts' },
@@ -26,6 +28,35 @@ export async function SystemSection() {
 
   return (
     <>
+      <section className="panel">
+        <header className="panel-header">
+          <div>
+            <h2>Version</h2>
+            <p className="muted">
+              This install runs UniDock {update.current}.{' '}
+              {update.kind
+                ? `UniDock ${update.latest} is available (a ${update.kind} update).`
+                : update.latest
+                  ? 'It is up to date.'
+                  : 'The newest release could not be checked right now.'}
+            </p>
+          </div>
+          {update.kind ? (
+            <a className="button primary" href={update.updateUrl} target="_blank" rel="noreferrer">
+              Update now
+            </a>
+          ) : null}
+        </header>
+        {update.kind && update.releaseUrl ? (
+          <p className="muted" style={{ margin: 0 }}>
+            <a href={update.releaseUrl} target="_blank" rel="noreferrer">
+              What&apos;s new in {update.latest}
+            </a>
+            . A snapshot of your data is taken before the update is applied.
+          </p>
+        ) : null}
+      </section>
+
       <section className="panel">
         <header className="panel-header">
           <div>

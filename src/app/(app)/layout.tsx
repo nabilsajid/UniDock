@@ -8,6 +8,7 @@ import { PROFILE_FIELDS } from '@/components/profile-fields';
 import { ApiForm } from '@/components/resource-manager';
 import { hiddenSections } from '@/lib/domain/sections';
 import { AppShell } from '@/components/shell/app-shell';
+import { UpdateNotice } from '@/components/update-notice';
 import { appearanceCss } from '@/lib/domain/appearance';
 import { wants } from '@/lib/domain/notification-kind';
 import { soonLimit } from '@/lib/domain/deadlines';
@@ -101,6 +102,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
       viewingCompany={companyView?.orgName ?? null}
     >
       <LiveRefresh orgId={orgId} />
+      {isAdmin ? <UpdateNotice /> : null}
       <OfflineStatus userId={userId} />
       <div className="page-in">
         {needsProfile ? (

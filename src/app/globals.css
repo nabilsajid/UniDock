@@ -5368,3 +5368,59 @@
 .splash-logo {
   height: 36px !important;
 }
+
+/* Admins: a newer UniDock release is out. */
+.update-notice {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.6rem 0.9rem;
+  margin-bottom: 1.25rem;
+  padding: 0.7rem 0.9rem;
+  border: 1px solid color-mix(in srgb, var(--color-primary) 35%, transparent);
+  border-radius: var(--radius-card, 14px);
+  background: var(--color-primary-soft);
+  color: var(--color-ink);
+  font-size: 13px;
+  animation: su-step-in 0.4s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.update-notice p {
+  flex: 1;
+  min-width: 14rem;
+  margin: 0;
+}
+
+.update-notice-icon {
+  flex-shrink: 0;
+  color: var(--color-primary);
+}
+
+.update-notice-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.update-notice-actions a {
+  color: var(--color-primary);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.update-notice-actions a.update-notice-primary {
+  padding: 0.35rem 0.75rem;
+  border-radius: var(--radius-control, 10px);
+  background: var(--color-primary);
+  color: var(--color-on-primary);
+}
+
+.update-notice-actions button {
+  display: inline-flex;
+  padding: 0.3rem;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--color-muted);
+  cursor: pointer;
+}

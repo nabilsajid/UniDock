@@ -18,6 +18,8 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      # Released migrations unchanged, and no new one deletes data (RELEASING.md).
+      - run: npm run migrations:check
       - run: npm run typecheck
       - run: npm test
       - run: npm run build

@@ -118,6 +118,14 @@ Everyone can always see and act on their own things: assigned tasks, their own a
 - `company_views` holds the company the owner has stepped into. `view_company(org)` sets it, and `view_company(null)` clears it.
 - New companies, each with its first admin, are created by `/api/companies` using the service key. New companies get the default roles and point rules through triggers on `organizations`.
 
+## Versions, releases and updates
+
+- The version is `package.json`'s `version`, exposed as `NEXT_PUBLIC_APP_VERSION` (next.config.ts). Releases are git tags `vX.Y.Z`; `.github/workflows/release.yml` publishes them with their CHANGELOG section. See RELEASING.md.
+- `src/lib/server/updates.ts` reads the newest release from GitHub (cached six hours). Admins see `UpdateNotice` and Settings → System check → Version. `UNIDOCK_UPDATE_CHECK=off` turns it off.
+- Each install's copy has `.github/workflows/update-unidock.yml` (Actions → Update UniDock). It replaces UniDock's files with a release's, keeping the copy's workflows, `public/logo*.png` and paths in `.unidock-keep`, then pushes.
+- `scripts/check-migrations.mjs` (in Checks) keeps released migrations unchanged (`supabase/migrations.lock`) and stops new ones from deleting data.
+- Before applying database updates, `scripts/migrate.mjs` saves a gzipped JSON snapshot of every API-visible table and the sign-in accounts to the private Storage bucket `unidock-snapshots` (last 10 kept). The deploy stops if that fails, unless `SKIP_PRE_UPDATE_SNAPSHOT=true`.
+
 ## First-run setup
 
 - A fresh install sends every visitor to `/setup` (`src/app/setup`). The login page does the same while no company exists (`needsSetup` in `src/lib/server/setup.ts`).

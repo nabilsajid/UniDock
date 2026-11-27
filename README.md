@@ -32,12 +32,14 @@ Built with Next.js (App Router, TypeScript) and Supabase (Postgres, Auth, row le
 
 ### Getting updates
 
-Your install runs from your own copy of UniDock on GitHub, so new versions reach it only when that copy is updated. Vercel then redeploys, applies any new database updates by itself, and your team gets the new version the next time they refresh.
+UniDock has numbered releases (see [CHANGELOG.md](CHANGELOG.md)). When a newer one is out, admins see a notice inside UniDock with what's new and an **Update now** button.
 
-- **Forked** (GitHub **Fork**, then imported into Vercel): open your fork and click **Sync fork**.
-- **Deployed with the button** (a copy, not a fork): run `git pull https://github.com/nabilsajid/UniDock main` in your copy and push it.
+1. **Update now** opens your copy on GitHub: **Actions → Update UniDock → Run workflow**.
+2. It brings the release into your copy and pushes it. Vercel redeploys.
+3. Before the database is changed, the deploy saves a snapshot of all your data to your Supabase Storage (bucket `unidock-snapshots`, the last 10 kept). If the snapshot or an update step fails, the deploy stops and your current version keeps running.
+4. Your team gets the new version the next time they refresh.
 
-Everything else is optional and listed in [`.env.example`](.env.example). After signing in, **Settings → System check** shows that every database update has been applied.
+Updates never delete data: every database change is checked to only add (see [RELEASING.md](RELEASING.md)). Your data lives in Supabase, so replacing UniDock's files never touches it. If you change UniDock's code yourself, fork it instead and use GitHub's **Sync fork**, because the Update action replaces UniDock's own files.
 
 ### Hosting somewhere else
 
