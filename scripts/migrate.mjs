@@ -10,6 +10,11 @@
 // Set SKIP_DB_MIGRATIONS=true to turn it off.
 import { spawnSync } from 'node:child_process';
 
+// Snapshots before an update (see snapshot() at the end).
+const BUCKET = 'unidock-snapshots';
+const KEEP = 10;
+const PAGE = 1000;
+
 const raw = process.env.SUPABASE_DB_URL || process.env.POSTGRES_URL_NON_POOLING || '';
 if (process.env.SKIP_DB_MIGRATIONS === 'true' || !raw) {
   console.log('[migrate] No database connection string set; skipping database updates.');
@@ -108,9 +113,6 @@ async function tablesExist() {
 // gzipped into the private Storage bucket "unidock-snapshots". The last 10 are
 // kept. Only the secret key can read them; download one from Supabase →
 // Storage → unidock-snapshots.
-const BUCKET = 'unidock-snapshots';
-const KEEP = 10;
-const PAGE = 1000;
 
 async function snapshot(pending) {
   const { gzipSync } = await import('node:zlib');
