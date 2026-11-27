@@ -31,6 +31,7 @@ export const EXPORT_TABLES: { table: string; sheet: string }[] = [
   { table: 'point_entries', sheet: 'Points' },
   { table: 'bonuses', sheet: 'Bonuses' },
   { table: 'violation_types', sheet: 'Point rules' },
+  { table: 'point_rewards', sheet: 'Rewards' },
   { table: 'equipment', sheet: 'Equipment' },
   { table: 'equipment_checkouts', sheet: 'Equipment use' },
   { table: 'equipment_needs', sheet: 'Equipment needs' },

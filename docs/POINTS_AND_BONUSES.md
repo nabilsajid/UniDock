@@ -8,9 +8,10 @@
 | Office attendance | +100 per verified day | `point_settings.attendance_points` |
 | Completed task | Configurable, default 0 | `point_settings.default_task_points`, or `tasks.points_value` for one task |
 | Responsibility violation | Configurable deduction | `violation_types.deduction_points` |
+| Rewards (given by hand) | Ready-made list with default points, e.g. Client onboarded 200 | `point_rewards` |
 | Bonus | ৳1,000 for every full 1,000 points above the target | `point_settings.bonus_step_points`, `point_settings.bonus_step_amount` |
 
-An admin can change all of these on the Employees & Rewards page. Changes apply to points awarded afterwards.
+An admin can change all of these under Employees & Rewards → Point rules. Changes apply to points awarded afterwards. Give points offers the rewards list and fills in each reward's default points, which can still be changed for one award.
 
 ## Monthly reset
 

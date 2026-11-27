@@ -190,6 +190,15 @@ export const violationTypes: ResourceConfig = {
   orderBy: { column: 'name', ascending: true },
 };
 
+/** Ready-made rewards with default points. Only admins change the list. */
+export const pointRewards: ResourceConfig = {
+  table: 'point_rewards',
+  label: 'reward',
+  createSchema: v.pointRewardCreate,
+  updateSchema: v.pointRewardUpdate,
+  orderBy: { column: 'name', ascending: true },
+};
+
 export const pointEntries: ResourceConfig = {
   table: 'point_entries',
   label: 'point entry',

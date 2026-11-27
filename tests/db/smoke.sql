@@ -30,6 +30,10 @@ select pg_temp.check(
    from point_settings where org_id = '00000000-0000-0000-0000-000000000001'),
   'new organization gets default point settings');
 
+select pg_temp.check(
+  (select count(*) = 5 and min(points) > 0 from point_rewards where org_id = '00000000-0000-0000-0000-000000000001'),
+  'new organization gets the starting rewards');
+
 -- Equipment purchase in cash flow creates inventory, even without a price.
 insert into expenses (id, org_id, category, description, amount) values
   ('00000000-0000-0000-0000-00000000c001', '00000000-0000-0000-0000-000000000001', 'equipment', 'Sony FX3', null),
@@ -188,6 +192,12 @@ set local request.jwt.claim.sub = '00000000-0000-0000-0000-0000000000e1';
 select pg_temp.check((select count(*) = 0 from expenses), 'employee cannot see expenses');
 select pg_temp.check((select count(*) = 0 from invoices), 'employee cannot see invoices');
 select pg_temp.check((select count(*) = 2 from tasks), 'employee can see tasks');
+select pg_temp.check((select count(*) = 5 from point_rewards), 'employee can see the rewards list');
+do $$ begin
+  insert into point_rewards (org_id, name, points) values ('00000000-0000-0000-0000-000000000001', 'Self award', 999);
+  raise exception 'FAILED: employee added a reward';
+exception when insufficient_privilege then raise notice 'ok - only admins change the rewards list';
+end $$;
 select pg_temp.check((select count(*) = 3 from profiles), 'employee sees colleagues but not other organizations');
 select pg_temp.check(
   (select count(*) = 1 from monthly_points where period_month = '2026-10-01'),

@@ -49,6 +49,7 @@ export const DATABASE_UPDATES: UpdateCheck[] = [
   { file: '20261112000047_invoice_lines_extras.sql', adds: 'Itemised invoices and extras invoices', table: 'invoices', column: 'lines' },
   { file: '20261112000048_signature_portal_invoices.sql', adds: 'Invoice signature and portal invoice switches', table: 'client_portals', column: 'show_invoices' },
   { file: '20261112000050_email_outbox.sql', adds: 'Emails wait for approval', table: 'email_outbox', column: 'subject' },
+  { file: '20261112000054_point_rewards.sql', adds: 'Ready-made rewards with default points', table: 'point_rewards', column: 'points' },
 ];
 
 /** Files whose effect cannot be looked for from the app; they are listed as "cannot be checked". */

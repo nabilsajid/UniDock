@@ -70,7 +70,7 @@ export const PAGES: { title: string; href: string; words: string; need?: string 
   { title: 'Employees & Rewards · Points', href: '/employees', words: 'points reward score statement target' },
   { title: 'Attendance', href: '/employees?tab=attendance', words: 'attendance entry exit check in office day' },
   { title: 'Bonuses', href: '/employees?tab=bonuses', words: 'bonus reward money' },
-  { title: 'Point rules & violations', href: '/employees?tab=settings', words: 'rules violation deduction late target', need: 'team_points' },
+  { title: 'Point rules, rewards & violations', href: '/employees?tab=settings', words: 'rules violation deduction late target attendance points reward task points bonus', need: 'team_points' },
   { title: 'Team contacts', href: '/profile?tab=team', words: 'profile contact phone team people number address' },
   { title: 'Employees · Team', href: '/employees?tab=team', words: 'employee staff team member add person', need: 'admin' },
   { title: 'My profile & notifications', href: '/profile', words: 'my profile notification alert device password' },

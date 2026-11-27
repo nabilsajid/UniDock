@@ -12,9 +12,9 @@ test('every accent gives buttons whose text is easy to read, in both themes', ()
 });
 
 test('stored values are read safely', () => {
-  assert.deepEqual(readAppearance(null), { accent: '#b0643f', corners: 'soft', glow: true });
+  assert.deepEqual(readAppearance(null), { accent: '#7c3aed', corners: 'soft', glow: true });
   assert.deepEqual(readAppearance({ accent: '#3B6EA8', corners: 'round', glow: false }), { accent: '#3b6ea8', corners: 'round', glow: false });
-  assert.deepEqual(readAppearance({ accent: 'red;}body{display:none', corners: 'weird', glow: 'yes' }), { accent: '#b0643f', corners: 'soft', glow: true });
+  assert.deepEqual(readAppearance({ accent: 'red;}body{display:none', corners: 'weird', glow: 'yes' }), { accent: '#7c3aed', corners: 'soft', glow: true });
 });
 
 test('the styles carry only the checked values', () => {

@@ -333,6 +333,16 @@ export interface PointSettings {
   bonus_step_amount: number;
 }
 
+/** A ready-made reason for giving points, with its default amount. */
+export interface PointReward {
+  id: string;
+  org_id: string;
+  name: string;
+  points: number;
+  is_active: boolean;
+  created_at: string;
+}
+
 export interface ViolationType {
   id: string;
   org_id: string;

@@ -2,6 +2,7 @@
 // worked out from one accent colour for light and dark mode.
 
 export const ACCENT_PRESETS = [
+  { value: '#7c3aed', label: 'Violet' },
   { value: '#b0643f', label: 'Clay' },
   { value: '#3b6ea8', label: 'Ocean' },
   { value: '#2f7f7a', label: 'Teal' },
@@ -25,7 +26,7 @@ export interface Appearance {
   glow?: boolean;
 }
 
-export const DEFAULT_APPEARANCE: Required<Appearance> = { accent: '#b0643f', corners: 'soft', glow: true };
+export const DEFAULT_APPEARANCE: Required<Appearance> = { accent: '#7c3aed', corners: 'soft', glow: true };
 
 const HEX = /^#[0-9a-f]{6}$/i;
 

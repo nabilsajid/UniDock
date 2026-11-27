@@ -380,6 +380,13 @@ export const violationTypeCreate = z.object({
 });
 export const violationTypeUpdate = violationTypeCreate.partial();
 
+export const pointRewardCreate = z.object({
+  name: text,
+  points: z.number().int().positive('Use a whole number of points above zero.').max(100000),
+  is_active: z.boolean().optional(),
+});
+export const pointRewardUpdate = pointRewardCreate.partial();
+
 const month = z.string().regex(/^\d{4}-\d{2}(-\d{2})?$/, 'Use the format YYYY-MM.');
 
 export const pointEntryCreate = z

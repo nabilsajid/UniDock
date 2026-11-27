@@ -12,7 +12,7 @@ import { roleTags, titleTags } from '@/lib/domain/roles';
 import { money, monthLabel } from '@/lib/format';
 import { asRows, enumOptions, getPageContext, options, peopleOptions, rowsOf } from '@/lib/page';
 import { buildMonthlySummary, getOrgTimezone, getPointRules } from '@/lib/services/rewards';
-import type { Attendance, Bonus, MonthlyPoints, PointEntry, PointSettings, Profile, ProfileRole, Role, ViolationType } from '@/types/database';
+import type { Attendance, Bonus, MonthlyPoints, PointEntry, PointReward, PointSettings, Profile, ProfileRole, Role, ViolationType } from '@/types/database';
 
 // How each kind of point entry is named in the history.
 const SOURCE_LABEL: Record<string, (points: number) => string> = {
@@ -28,7 +28,7 @@ const TABS = [
   { key: 'bonuses', label: 'Bonuses' },
   { key: 'team', label: 'Team' },
   { key: 'payroll', label: 'Payroll' },
-  { key: 'settings', label: 'Rules' },
+  { key: 'settings', label: 'Point rules' },
 ] as const;
 type Tab = (typeof TABS)[number]['key'];
 
@@ -61,7 +61,7 @@ export default async function EmployeesPage({ searchParams }: { searchParams: Pr
   const canGivePoints = editsTeamPoints;
 
   // Everything the page needs is fetched in one parallel round.
-  const [rules, peopleR, attendanceR, entriesR, violationsR, settingsR, bonusesR, rolesR, heldR, totalsR, leaveR] = await Promise.all([
+  const [rules, peopleR, attendanceR, entriesR, violationsR, settingsR, bonusesR, rolesR, heldR, totalsR, leaveR, rewardsR] = await Promise.all([
     getPointRules(supabase, orgId),
     supabase.from('profiles').select('*').eq('org_id', orgId).order('full_name'),
     supabase.from('attendance').select('*').eq('org_id', orgId).gte('work_date', month).lt('work_date', nextMonth(month)).order('work_date', { ascending: false }),
@@ -74,7 +74,10 @@ export default async function EmployeesPage({ searchParams }: { searchParams: Pr
     supabase.from('monthly_points').select('*').eq('org_id', orgId).eq('period_month', month),
     // Approved leave overlapping this month, shown next to attendance.
     supabase.from('leave_requests').select('*').eq('org_id', orgId).eq('status', 'approved').lte('start_date', nextMonth(month)).gte('end_date', month),
+    // Ready-made rewards (missing before the rewards update: then Give points uses its built-in reasons).
+    supabase.from('point_rewards').select('*').eq('org_id', orgId).order('name'),
   ]);
+  const rewards = rowsOf<PointReward>(rewardsR.error ? [] : rewardsR.data);
   // Points for the six months up to the one shown, for everyone (people who see team points).
   const historyMonths = Array.from({ length: 6 }, (_, back) => {
     const [year, monthNumber] = month.slice(0, 7).split('-').map(Number);
@@ -230,6 +233,7 @@ export default async function EmployeesPage({ searchParams }: { searchParams: Pr
               people={isAdmin ? staff : staff.filter((person) => person.value !== userId)}
               month={month}
               needsApproval={needsApproval}
+              rewards={rewards.filter((reward) => reward.is_active).map((reward) => ({ name: reward.name, points: reward.points }))}
             />
           ) : null}
 
@@ -240,6 +244,12 @@ export default async function EmployeesPage({ searchParams }: { searchParams: Pr
                 <p className="muted">
                   Target {rules.monthly_target.toLocaleString('en-US')} points. Every {rules.bonus_step_points.toLocaleString('en-US')} points
                   above it earns a {money(rules.bonus_step_amount)} bonus, once approved.
+                  {isAdmin ? (
+                    <>
+                      {' '}
+                      <Link href={href('settings')}>Change the point rules</Link>
+                    </>
+                  ) : null}
                 </p>
               </div>
             </header>
@@ -684,7 +694,10 @@ export default async function EmployeesPage({ searchParams }: { searchParams: Pr
               <header className="panel-header">
                 <div>
                   <h2>Point rules</h2>
-                  <p className="muted">Changes apply to points awarded from now on.</p>
+                  <p className="muted">
+                    Your company&apos;s own numbers: the monthly target, the points each verified office day and each completed task earn, and the
+                    bonus. Changes apply to points awarded from now on.
+                  </p>
                 </div>
               </header>
               <ApiForm
@@ -694,8 +707,8 @@ export default async function EmployeesPage({ searchParams }: { searchParams: Pr
                 resetOnSuccess={false}
                 initial={settings ? { ...settings } : { ...rules }}
                 fields={[
-                  { name: 'monthly_target', label: 'Monthly target', type: 'number', required: true },
-                  { name: 'attendance_points', label: 'Points per verified office day', type: 'number', required: true },
+                  { name: 'monthly_target', label: 'Monthly target (points)', type: 'number', required: true, hint: 'Points each person aims for every month.' },
+                  { name: 'attendance_points', label: 'Points per verified office day', type: 'number', required: true, hint: 'For example 30 or 100. Use 0 for none.' },
                   { name: 'default_task_points', label: 'Default points per completed task', type: 'number', required: true, hint: 'A task can set its own value.' },
                   { name: 'bonus_step_points', label: 'Points per bonus step', type: 'number', required: true },
                   { name: 'bonus_step_amount', label: 'Bonus per step (৳)', type: 'number', required: true },
@@ -703,6 +716,26 @@ export default async function EmployeesPage({ searchParams }: { searchParams: Pr
               />
             </section>
           ) : null}
+
+          <ResourceManager
+            title="Rewards"
+            description="Ready-made reasons for giving points, each with its default amount. Give points offers them and fills in the points, which can still be changed for one award."
+            endpoint="/api/point-rewards"
+            rows={asRows(rewards)}
+            columns={[
+              { key: 'name', label: 'Reward' },
+              { key: 'points', label: 'Points', kind: 'number' },
+              { key: 'is_active', label: 'Active', kind: 'bool' },
+            ]}
+            fields={[
+              { name: 'name', label: 'Name', required: true, placeholder: 'Client onboarded' },
+              { name: 'points', label: 'Default points', type: 'number', required: true },
+              { name: 'is_active', label: 'Active', type: 'checkbox' },
+            ]}
+            canWrite={isAdmin}
+            addLabel="Add reward"
+            emptyText="No rewards yet. Add the reasons your team earns points for."
+          />
 
           <ResourceManager
             title="Violation types"

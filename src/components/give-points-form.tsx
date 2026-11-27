@@ -6,15 +6,36 @@ import { POINT_REASONS, pointReason } from '@/lib/domain/points';
 import { toast } from './resource-manager';
 import type { Option } from './types';
 
+/** A ready-made reward: a reason and its default points (set under Point rules). */
+export interface RewardOption {
+  name: string;
+  points: number;
+}
+
 /**
- * Give points to an employee for any reason. An admin's points count at once;
- * anyone else's are sent to an admin for approval.
+ * Give points to an employee for any reason. Choosing one of the company's
+ * rewards fills in its default points, which can still be changed. An admin's
+ * points count at once; anyone else's are sent to an admin for approval.
  */
-export function GivePointsForm({ people, month, needsApproval }: { people: Option[]; month: string; needsApproval: boolean }) {
+export function GivePointsForm({
+  people,
+  month,
+  needsApproval,
+  rewards = [],
+}: {
+  people: Option[];
+  month: string;
+  needsApproval: boolean;
+  rewards?: RewardOption[];
+}) {
   const router = useRouter();
+  // The company's rewards, or the built-in reasons for a company without any yet. "Other" is always last.
+  const reasons: RewardOption[] = rewards.length
+    ? [...rewards, { name: 'Other', points: 0 }]
+    : POINT_REASONS.map((name) => ({ name, points: 0 }));
   const [employeeId, setEmployeeId] = useState('');
-  const [preset, setPreset] = useState<string>(POINT_REASONS[0]);
-  const [points, setPoints] = useState('');
+  const [preset, setPreset] = useState<string>(reasons[0]?.name ?? 'Other');
+  const [points, setPoints] = useState(reasons[0]?.points ? String(reasons[0].points) : '');
   const [details, setDetails] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -44,7 +65,8 @@ export function GivePointsForm({ people, month, needsApproval }: { people: Optio
       const name = people.find((person) => person.value === employeeId)?.label ?? 'them';
       if (response.status === 202) toast('Sent to an admin for approval.');
       else toast(`${amount.toLocaleString('en-US')} points given to ${name}`, 'success');
-      setPoints('');
+      const chosen = reasons.find((reason) => reason.name === preset);
+      setPoints(chosen?.points ? String(chosen.points) : '');
       setDetails('');
       startTransition(() => router.refresh());
     } catch {
@@ -80,10 +102,17 @@ export function GivePointsForm({ people, month, needsApproval }: { people: Optio
           </label>
           <label className="field">
             <span>Reason *</span>
-            <select value={preset} onChange={(event) => setPreset(event.target.value)}>
-              {POINT_REASONS.map((reason) => (
-                <option key={reason} value={reason}>
-                  {reason}
+            <select
+              value={preset}
+              onChange={(event) => {
+                setPreset(event.target.value);
+                const chosen = reasons.find((reason) => reason.name === event.target.value);
+                if (chosen?.points) setPoints(String(chosen.points));
+              }}
+            >
+              {reasons.map((reason) => (
+                <option key={reason.name} value={reason.name}>
+                  {reason.points ? `${reason.name} (${reason.points.toLocaleString('en-US')})` : reason.name}
                 </option>
               ))}
             </select>
