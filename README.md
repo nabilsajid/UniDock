@@ -30,7 +30,12 @@ Built with Next.js (App Router, TypeScript) and Supabase (Postgres, Auth, row le
 
    Then it creates your admin workspace and signs you in.
 
-To update later, open your copy on GitHub and click **Sync fork**. Vercel redeploys and applies any new database updates by itself.
+### Getting updates
+
+Your install runs from your own copy of UniDock on GitHub, so new versions reach it only when that copy is updated. Vercel then redeploys, applies any new database updates by itself, and your team gets the new version the next time they refresh.
+
+- **Forked** (GitHub **Fork**, then imported into Vercel): open your fork and click **Sync fork**.
+- **Deployed with the button** (a copy, not a fork): run `git pull https://github.com/nabilsajid/UniDock main` in your copy and push it.
 
 Everything else is optional and listed in [`.env.example`](.env.example). After signing in, **Settings → System check** shows that every database update has been applied.
 
